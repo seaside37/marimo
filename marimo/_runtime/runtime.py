@@ -203,6 +203,9 @@ from marimo._utils.platform import is_pyodide
 from marimo._utils.signals import restore_signals
 from marimo._utils.typed_connection import TypedConnection
 
+from marimo._messaging.ops import Datasets, DataSourceConnections
+from marimo._data.models import DataTable, DataTableColumn, DataSourceConnection, Database, Schema
+
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Iterator, Sequence
     from types import ModuleType
@@ -1305,20 +1308,33 @@ class Kernel:
 
         # Always broadcast Variables message after graph mutation to ensure
         # frontend has the latest dependency information
-        Variables(
-            variables=[
-                VariableDeclaration(
-                    name=variable,
-                    declared_by=list(declared_by),
-                    used_by=list(
-                        self.graph.get_referring_cells(
-                            variable, language="python"
-                        )
-                    ),
+        variable_declarations: list[VariableDeclaration] = [
+            VariableDeclaration(
+                name=variable,
+                declared_by=list(declared_by),
+                used_by=list(
+                    self.graph.get_referring_cells(variable, language="python")
+                ),
+            )
+            for variable, declared_by in self.graph.definitions.items()
+        ]
+
+        # Add protected globals (e.g. injected engine) so they are included
+        # in the Variables broadcast and won't be dropped by FE merges.
+        _PROTECTED_GLOBALS = {"pg_engine", "duckdb_engine"}
+        for protected_name in _PROTECTED_GLOBALS:
+            if protected_name not in self.graph.definitions:
+                variable_declarations.append(
+                    VariableDeclaration(
+                        name=protected_name,
+                        declared_by=[],
+                        used_by=list(
+                            self.graph.get_referring_cells(protected_name, language="python")
+                        ),
+                    )
                 )
-                for variable, declared_by in self.graph.definitions.items()
-            ]
-        ).broadcast()
+
+        Variables(variables=variable_declarations).broadcast()
 
         stale_cells = (
             set(
@@ -3111,14 +3127,18 @@ def launch_kernel(
 
     try:
         connect_tsdb(target_globals=kernel.globals)
+        connect_duckdb(target_globals=kernel.globals)
     except Exception as e:
         LOGGER.debug("connect_tsdb failed: %s", e)
     
     try:
         publish_local_dataframes(kernel).broadcast()
-    except Exception:
-        LOGGER.debug("publish_local_dataframes failed", exc_info=True)
-    
+        publish_local_engine(kernel).broadcast()
+        # kernel.enqueue_control_request(PreviewDataSourceConnectionRequest(engine="engine"))
+
+    except Exception as e:
+         LOGGER.debug("publish_local_dataframes failed: %s", e)
+
     if is_edit_mode:
         # completions only provided in edit mode
         kernel.start_completion_worker(completion_queue)
@@ -3222,13 +3242,14 @@ def connect_tsdb(target_globals: dict | None = None) -> None:
     g = target_globals if target_globals is not None else globals()
     try:
         PG_URL = os.getenv("PG_URL", "postgresql+psycopg2://postgres:123456@localhost:5432/tsdb")
-        engine = create_engine(PG_URL)
-        inspector = inspect(engine)
+        pg_engine = create_engine(PG_URL)
+        g["pg_engine"] = pg_engine
+        inspector = inspect(pg_engine)
         tables = inspector.get_table_names()
 
         for table in tables:
             try:
-                df = pd.read_sql(f"SELECT * FROM {table}", engine)
+                df = pd.read_sql(f"SELECT * FROM {table}", pg_engine)
                 g[table] = df
             except Exception as e:
                 print(f"        ⚠️ Failed to load table '{table}': {e}")
@@ -3237,9 +3258,40 @@ def connect_tsdb(target_globals: dict | None = None) -> None:
     except Exception as e:
         print(f"        ⚠️ Failed to connect to PostgreSQL: {e}")
 
+def connect_duckdb(target_globals: dict | None = None):
+    """
+    Load the table from DuckDB and inject it into target_globals (or module globals if not provided).
+    The timing of the call should be when the kernel is initialized and kernel.globals is available (e.g. within launch_kernel).
+    """
+    g = target_globals if target_globals is not None else globals()
+    try:
+        import duckdb
+        duckdb_engine = duckdb.connect()
+        duckdb_engine.execute("INSTALL aws")
+        duckdb_engine.execute("INSTALL httpfs")
+        duckdb_engine.execute("INSTALL iceberg;")
+        duckdb_engine.execute("LOAD aws;")
+        duckdb_engine.execute("LOAD httpfs;")
+        duckdb_engine.execute("LOAD iceberg;")
 
-from marimo._messaging.ops import Datasets
-from marimo._data.models import DataTable, DataTableColumn, DataSourceConnection, Database, Schema
+        duckdb_engine.execute("""
+            CREATE SECRET (
+            TYPE s3,
+            PROVIDER credential_chain
+        );
+        """)
+
+        duckdb_engine.execute("""
+            ATTACH 'arn:aws:s3tables:us-east-1:721506677612:bucket/my-demo-s3-tables' AS s3_tables (
+            TYPE iceberg,
+            ENDPOINT_TYPE s3_tables
+        );
+        """)
+
+        g["duckdb_engine"] = duckdb_engine
+
+    except Exception as e:
+        print(f"        ⚠️ Failed to connect to DuckDB: {e}")
 
 def _make_datatable_from_df(name: str, df) -> DataTable:
     """Convert a pandas DataFrame into a DataTable object."""
@@ -3318,7 +3370,29 @@ def publish_local_dataframes(kernel) -> Datasets:
     tables = [_make_datatable_from_df(name, df) for name, df in dataframes.items()]
 
     # Create a Datasets op which SessionView retains/merges persistently
-    op = Datasets(tables=tables)
+    return Datasets(tables=tables)
 
-    # Return op to caller so it can .broadcast() (and server will persist via session replay)
-    return op
+def publish_local_engine(kernel) -> DataSourceConnections:
+    """Scan kernel.globals, find SQLConnectionType and produce a DataSourceConnections op to broadcast."""
+
+    connections: list[DataSourceConnection] = []
+
+    for name, _ in list(getattr(kernel, "globals", {}).items()):
+        try:
+            conn, err = kernel.get_sql_connection(name)
+        except Exception as e:
+            LOGGER.debug("kernel.get_sql_connection raised for %s: %s", name, e, exc_info=True)
+            continue
+
+        if err is not None or conn is None:
+            # not an engine or failed to resolve
+            continue
+
+        try:
+            ds_conn = engine_to_data_source_connection(VariableName(name), conn)
+            connections.append(ds_conn)
+        except Exception as e:
+            LOGGER.debug("engine_to_data_source_connection failed for %s: %s", name, e, exc_info=True)
+            continue
+
+    return DataSourceConnections(connections=connections)

@@ -1101,8 +1101,8 @@ packages:
   timestamp: 1727801725384
 - pypi: ./
   name: marimo
-  version: 0.17.0
-  sha256: 3ad30865c3f4e4123cc42ed7f504c66d52bf4c3c4378026197cd8a0bf4040350
+  version: 0.17.6
+  sha256: adff4529a418a8f3154adba424233c00d50beece8d4f565645842d85aacfd02c
   requires_dist:
   - click>=8.0,<9
   - jedi>=0.18.0
@@ -1130,6 +1130,7 @@ packages:
   - polars[pyarrow]>=1.9.0 ; extra == 'recommended'
   - sqlglot[rs]>=26.2.0 ; extra == 'recommended'
   - openai>=1.55.3 ; extra == 'recommended'
+  - google-genai>=1.20.0 ; extra == 'recommended'
   - ruff ; extra == 'recommended'
   - nbformat>=5.7.0 ; extra == 'recommended'
   - click>=8.0,<9 ; extra == 'dev'
@@ -1144,7 +1145,7 @@ packages:
   - python-lsp-ruff>=2.0.0 ; extra == 'lsp'
   - mcp>=1.0.0 ; python_full_version >= '3.10' and extra == 'mcp'
   - pydantic>2 ; python_full_version >= '3.10' and extra == 'mcp'
-  requires_python: '>=3.9'
+  requires_python: '>=3.10'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/3f/08/83871f3c50fc983b88547c196d11cf8c3340e37c32d2e9d6152abe2c61f7/Markdown-3.7-py3-none-any.whl
   name: markdown

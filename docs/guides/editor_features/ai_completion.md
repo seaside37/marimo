@@ -84,8 +84,9 @@ into your notebook.
 
 The chat panel currently supports the following modes:
 
-- **Ask**: Enables read-only [AI tools](tools.md) and [tools from added MCP Client servers](mcp.md#mcp-client) for context gathering, allowing the assistant to inspect your notebooks
 - **Manual**: No tool access; the AI responds based only on the conversation and manually injected context
+- **Ask**: Enables read-only [AI tools](tools.md) and [tools from added MCP Client servers](mcp.md#mcp-client) for context gathering, allowing the assistant to inspect your notebooks
+- **Agent** (beta): Enables all tools in **Ask Mode** plus additional tools to [edit notebook cells (add, remove, update) and run stale cells](tools.md#editing-agent-mode-only).
 
 ??? tip "See the chat panel in action"
 
@@ -160,6 +161,12 @@ See the [llm_providers](../configuration/llm_providers.md) guide for detailed in
 
 ## Copilots
 
+Copilots allow you to tab-complete code based on your notebook's context, similar to editors like Cursor. 
+
+<video autoplay muted loop playsinline width="100%" height="100%" align="center">
+  <source src="/_static/docs-ai-completion-preview.mp4" type="video/mp4">
+</video>
+
 ### GitHub Copilot
 
 The marimo editor natively supports [GitHub Copilot](https://copilot.github.com/),
@@ -167,6 +174,13 @@ an AI pair programmer, similar to VS Code:
 
 1. Install [Node.js](https://nodejs.org/en/download).
 2. Enable Copilot via the settings menu in the marimo editor.
+
+<div align="center">
+<figure>
+<img src="/_static/docs-ai-completion-gh.png" width="740px"/>
+<figcaption>Follow these instructions.</figcaption>
+</figure>
+</div>
 
 _GitHUb Copilot is not yet available in our conda distribution; please install
 marimo using `pip`/`uv` if you need Copilot._

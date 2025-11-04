@@ -3,13 +3,15 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { capitalize } from "lodash-es";
+import { isPlatformWindows } from "@/core/hotkeys/shortcuts";
+import { jotaiJsonStorage } from "@/utils/storage/jotai";
 import type { TypedString } from "@/utils/typed";
 import { generateUUID } from "@/utils/uuid";
 import type { ExternalAgentSessionId, SessionSupportType } from "./types";
 
 // Types
 export type TabId = TypedString<"TabId">;
-export type ExternalAgentId = "claude" | "gemini";
+export type ExternalAgentId = "claude" | "gemini" | "codex";
 
 // No agents support loading sessions, so we limit to 1, otherwise
 // this is confusing to the user when switching between sessions
@@ -40,6 +42,7 @@ export const agentSessionStateAtom = atomWithStorage<AgentSessionState>(
     sessions: [],
     activeTabId: null,
   },
+  jotaiJsonStorage,
 );
 
 export const selectedTabAtom = atom(
@@ -217,7 +220,7 @@ export function getSessionsByAgent(
 }
 
 export function getAllAgentIds(): ExternalAgentId[] {
-  return ["claude", "gemini"];
+  return ["claude", "gemini", "codex"];
 }
 
 export function getAgentDisplayName(agentId: ExternalAgentId): string {
@@ -248,6 +251,12 @@ const AGENT_CONFIG: Record<ExternalAgentId, AgentConfig> = {
     webSocketUrl: "ws://localhost:3019/message",
     sessionSupport: "single",
   },
+  codex: {
+    port: 3021,
+    command: "npx @zed-industries/codex-acp",
+    webSocketUrl: "ws://localhost:3021/message",
+    sessionSupport: "single",
+  },
 };
 
 export function getAgentSessionSupport(
@@ -259,5 +268,6 @@ export function getAgentSessionSupport(
 export function getAgentConnectionCommand(agentId: ExternalAgentId): string {
   const port = AGENT_CONFIG[agentId].port;
   const command = AGENT_CONFIG[agentId].command;
-  return `npx stdio-to-ws "${command}" --port ${port}`;
+  const wrappedCommand = isPlatformWindows() ? `cmd /c ${command}` : command;
+  return `npx stdio-to-ws "${wrappedCommand}" --port ${port}`;
 }

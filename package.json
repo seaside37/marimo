@@ -10,8 +10,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.2",
-    "@testing-library/jest-dom": "^6.8.0",
-    "@typescript/native-preview": "7.0.0-dev.20250928.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@typescript/native-preview": "7.0.0-dev.20251029.1",
     "turbo": "^2.5.6",
     "vitest": "^3.2.4"
   },
@@ -27,7 +27,8 @@
     "overrides": {
       "react": "^19.1.0",
       "react-dom": "^19.1.0",
-      "vite": "npm:rolldown-vite@latest"
+      "vite": "npm:rolldown-vite@latest",
+      "form-data": ">=4.0.0"
     },
     "peerDependencyRules": {
       "allowedVersions": {

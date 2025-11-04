@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 def test_md() -> None:
     # Test basic markdown conversion
     input_text = "This is **bold** and this is _italic_."
-    expected_output = '<span class="markdown prose dark:prose-invert"><span class="paragraph">This is <strong>bold</strong> and this is <em>italic</em>.</span></span>'  # noqa: E501
+    expected_output = '<span class="markdown prose dark:prose-invert contents"><span class="paragraph">This is <strong>bold</strong> and this is <em>italic</em>.</span></span>'  # noqa: E501
     assert _md(input_text).text == expected_output
 
     # Test disabling markdown class
@@ -28,7 +28,7 @@ def test_md() -> None:
 
 # def test_md_size() -> None:
 #     input_text = "This is **bold** and this is _italic_."
-#     expected_output = '<span class="markdown prose dark:prose-invert prose-lg"><span class="paragraph">This is <strong>bold</strong> and this is <em>italic</em>.</span></span>'  # noqa: E501
+#     expected_output = '<span class="markdown prose dark:prose-invert contents prose-lg"><span class="paragraph">This is <strong>bold</strong> and this is <em>italic</em>.</span></span>'  # noqa: E501
 #     assert _md(input_text, size="lg").text == expected_output
 
 
@@ -449,6 +449,29 @@ def test_md_format():
     assert f"{md}" == input_text
 
 
+def test_md_mime_type():
+    # Test that _md returns text/markdown mime type for proper sanitization
+    input_text = "This is **bold** and this is _italic_."
+    md = _md(input_text)
+    mime_type, content = md._mime_()
+    # Has markdown mime type so the frontend knows to sanitize it
+    assert mime_type == "text/markdown"
+    # Content should be the rendered HTML
+    assert "<strong>bold</strong>" in content
+    assert "<em>italic</em>" in content
+
+
+def test_md_mime_type_with_script():
+    # Test that _md returns text/markdown even with potentially dangerous content
+    # The frontend will sanitize it
+    input_text = "# Title\n\nSome text"
+    md = _md(input_text)
+    # Has markdown mime type so the frontend knows to sanitize it
+    mime_type, content = md._mime_()
+    assert mime_type == "text/markdown"
+    assert "Title" in content
+
+
 @patch("marimo._runtime.output")
 def test_latex_via_path(output: MagicMock, tmp_path: Path) -> None:
     filename = tmp_path / "macros.tex"
@@ -456,7 +479,7 @@ def test_latex_via_path(output: MagicMock, tmp_path: Path) -> None:
     latex(filename=filename)
     assert (
         output.append.call_args[0][0].text
-        == '<span class="markdown prose dark:prose-invert"><marimo-tex class="arithmatex">||[\n\\newcommand{\\\x0coo}{bar}\n||]</marimo-tex></span>'
+        == '<span class="markdown prose dark:prose-invert contents"><marimo-tex class="arithmatex">||[\n\\newcommand{\\\x0coo}{bar}\n||]</marimo-tex></span>'
     )
 
 
@@ -470,5 +493,5 @@ def test_latex_via_url(mock_urlopen: MagicMock, output: MagicMock) -> None:
     latex(filename="https://example.com/macros.tex")
     assert (
         output.append.call_args[0][0].text
-        == '<span class="markdown prose dark:prose-invert"><marimo-tex class="arithmatex">||[\n\\newcommand{\\\foo}{bar}\n||]</marimo-tex></span>'
+        == '<span class="markdown prose dark:prose-invert contents"><marimo-tex class="arithmatex">||[\n\\newcommand{\\\foo}{bar}\n||]</marimo-tex></span>'
     )

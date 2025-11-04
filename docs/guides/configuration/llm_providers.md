@@ -62,6 +62,7 @@ You can configure the following providers:
 * Ollama
 * OpenAI
 * OpenRouter
+* Weights & Biases
 * Together AI
 * Vercel v0
 * and any OpenAI-compatible provider
@@ -85,6 +86,7 @@ edit_model = "openai/gpt-4o"
 [ai.open_ai]
 # Get an API key at https://platform.openai.com/account/api-keys
 api_key = "sk-proj-..."
+project = "proj_..."  # Optional, specify a project ID for tracking and organization
 ```
 
 !!! note "OpenAI-compatible providers"
@@ -133,7 +135,7 @@ region_name = "us-east-1" # AWS region where Bedrock is available
 profile_name = "my-profile"
 ```
 
-Use `profile_name` for a non-default named profile, or rely on env vars/standard AWS resolution.
+Use `profile_name` for a non-default named profile, or rely on env vars/standard AWS resolution. For regional inference models, specify the inference profile ID (e.g., `bedrock/eu.anthropic.claude-sonnet-4-20250514-v1:0`) and corresponding region.
 
 ??? tip "Required AWS Bedrock permissions"
     Ensure your IAM policy allows `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` for the models you plan to use.
@@ -264,6 +266,31 @@ base_url = "https://openrouter.ai/api/v1/"
 ```
 
 See available models at `https://openrouter.ai/models`. Make sure to prepend `openrouter/` to the model slug (e.g., `openrouter/deepseek/deepseek-chat`, `openrouter/meta-llama/llama-3.1-8b-instruct`).
+
+### Weights & Biases
+
+Access hosted AI models through Weights & Biases Weave for ML development and inference.
+
+**Requirements**
+
+* Create an API key: [Weights & Biases Settings](https://wandb.ai/authorize)
+* `pip install openai` or `uv add openai` (Weights & Biases is OpenAI‑compatible)
+
+**Configuration**
+
+```toml title="marimo.toml"
+[ai.models]
+# Use wandb/ prefix for Weights & Biases models. Examples:
+chat_model = "wandb/meta-llama/llama-3-70b-instruct"
+edit_model = "wandb/gpt-4o"
+
+[ai.wandb]
+api_key = "your-wandb-api-key"
+base_url = "https://api.inference.wandb.ai/v1/"  # Optional, this is the default
+project = "my-project"  # Optional, specify a project for tracking
+```
+
+See available models at the [Weights & Biases documentation](https://docs.wandb.ai/inference). Make sure to prepend `wandb/` to the model name.
 
 ### Local models with Ollama { #using-ollama }
 

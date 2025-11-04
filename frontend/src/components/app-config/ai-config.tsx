@@ -73,13 +73,11 @@ import {
 import { Switch } from "../ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Tooltip } from "../ui/tooltip";
-import { SettingSubtitle } from "./common";
+import { formItemClasses, SettingSubtitle } from "./common";
 import { AWS_REGIONS } from "./constants";
 import { IncorrectModelId } from "./incorrect-model-id";
 import { IsOverridden } from "./is-overridden";
 import { MCPConfig } from "./mcp-config";
-
-const formItemClasses = "flex flex-row items-center space-x-1 space-y-0";
 
 interface AiConfigProps {
   form: UseFormReturn<UserConfig>;
@@ -762,6 +760,62 @@ export const AiProvidersConfig: React.FC<AiConfigProps> = ({
             name="ai.openrouter.base_url"
             placeholder="https://openrouter.ai/api/v1/"
             testId="ai-openrouter-base-url-input"
+          />
+        </AccordionFormItem>
+
+        <AccordionFormItem
+          title="Weights & Biases"
+          provider="wandb"
+          isConfigured={hasValue("ai.wandb.api_key")}
+        >
+          <ApiKey
+            form={form}
+            config={config}
+            name="ai.wandb.api_key"
+            placeholder="your-wandb-api-key"
+            testId="ai-wandb-api-key-input"
+            description={
+              <>
+                Your Weights & Biases API key from{" "}
+                <ExternalLink href="https://wandb.ai/authorize">
+                  wandb.ai
+                </ExternalLink>
+                .
+              </>
+            }
+          />
+          <BaseUrl
+            form={form}
+            config={config}
+            name="ai.wandb.base_url"
+            placeholder="https://api.inference.wandb.ai/v1/"
+            testId="ai-wandb-base-url-input"
+          />
+          <FormField
+            control={form.control}
+            name="ai.wandb.project"
+            render={({ field }) => (
+              <div className="flex flex-col space-y-1">
+                <FormItem className={formItemClasses}>
+                  <FormLabel>Project</FormLabel>
+                  <FormControl>
+                    <Input
+                      data-testid="ai-wandb-project-input"
+                      rootClassName="flex-1"
+                      className="m-0 inline-flex h-7"
+                      placeholder="my-project"
+                      {...field}
+                      value={asStringOrUndefined(field.value)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  <IsOverridden userConfig={config} name="ai.wandb.project" />
+                </FormItem>
+                <FormDescription>
+                  Optional: Specify a project for tracking.
+                </FormDescription>
+              </div>
+            )}
           />
         </AccordionFormItem>
 

@@ -14,7 +14,11 @@ from marimo._ast.parse import (
     is_non_marimo_python_script,
     parse_notebook,
 )
-from marimo._schemas.serialization import NotebookSerialization, UnparsableCell
+from marimo._schemas.serialization import (
+    CellDef,
+    NotebookSerialization,
+    UnparsableCell,
+)
 
 LOGGER = _loggers.marimo_logger()
 
@@ -31,6 +35,15 @@ LOGGER = _loggers.marimo_logger()
 
 @dataclass
 class LoadResult:
+    """Result of attempting to load a marimo notebook.
+
+    status can be one of:
+     - empty: No content, or only comments / a doc string
+     - has_errors: Parsed, but has marimo-specific errors (**can load!!**)
+     - invalid: Could not be parsed as a marimo notebook (**cannot load**)
+     - valid: Parsed and valid marimo notebook
+    """
+
     status: Literal["empty", "has_errors", "invalid", "valid"] = "empty"
     notebook: Optional[NotebookSerialization] = None
     contents: Optional[str] = None
@@ -87,6 +100,24 @@ def _static_load(filepath: Path) -> Optional[App]:
         return None
 
     return load_notebook_ir(notebook, filepath=str(filepath))
+
+
+def find_cell(filename: str, lineno: int) -> CellDef | None:
+    """Find the cell at the given line number in the notebook.
+
+    Args:
+        filename: Path to a marimo notebook file (.py or .md)
+        lineno: Line number to search for
+    """
+    load_result = get_notebook_status(filename)
+    if load_result.notebook is None:
+        raise OSError("Could not resolve notebook.")
+    previous = None
+    for cell in load_result.notebook.cells:
+        if cell.lineno > lineno:
+            break
+        previous = cell
+    return previous
 
 
 def load_notebook_ir(

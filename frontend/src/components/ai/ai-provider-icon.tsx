@@ -9,13 +9,14 @@ import GeminiIcon from "@marimo-team/llm-info/icons/googlegemini.svg?inline";
 import OllamaIcon from "@marimo-team/llm-info/icons/ollama.svg?inline";
 import OpenAIIcon from "@marimo-team/llm-info/icons/openai.svg?inline";
 import OpenRouterIcon from "@marimo-team/llm-info/icons/openrouter.svg?inline";
+import WandbIcon from "@marimo-team/llm-info/icons/weightsandbiases.svg?inline";
 import { BotIcon } from "lucide-react";
 import * as React from "react";
 import type { ProviderId } from "@/core/ai/ids/ids";
 import { cn } from "@/utils/cn";
 import marimoIcon from "../../assets/icon-32x32.png?inline";
 
-type Aliases = "claude" | "gemini";
+type Aliases = "claude" | "gemini" | "codex";
 
 const icons: Record<ProviderId | Aliases, string> = {
   openai: OpenAIIcon,
@@ -23,12 +24,14 @@ const icons: Record<ProviderId | Aliases, string> = {
   claude: AnthropicIcon,
   gemini: GeminiIcon,
   google: GeminiIcon,
+  codex: OpenAIIcon,
   ollama: OllamaIcon,
   azure: AzureIcon,
   bedrock: BedrockIcon,
   deepseek: DeepseekIcon,
   github: GitHubIcon,
   openrouter: OpenRouterIcon,
+  wandb: WandbIcon,
   marimo: marimoIcon,
 };
 

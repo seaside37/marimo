@@ -98,13 +98,15 @@ export const CompletionActionsCellFooter: React.FC<{
   onDecline: () => void;
   size?: "xs" | "sm";
   multipleCompletions?: boolean;
-}> = ({ isLoading, onAccept, onDecline }) => {
+  runCell?: () => void;
+}> = ({ isLoading, onAccept, onDecline, runCell }) => {
   return (
     <>
       <AcceptCompletionButton
         isLoading={isLoading}
         onAccept={onAccept}
         size="xs"
+        runCell={runCell}
       />
       <RejectCompletionButton onDecline={onDecline} size="xs" />
     </>
@@ -114,6 +116,7 @@ export const CompletionActionsCellFooter: React.FC<{
 export const AcceptCompletionButton: React.FC<{
   isLoading: boolean;
   onAccept: () => void;
+  multipleCompletions?: boolean;
   size?: "xs" | "sm";
   buttonStyles?: string;
   playButtonStyles?: string;
@@ -122,6 +125,7 @@ export const AcceptCompletionButton: React.FC<{
 }> = ({
   isLoading,
   onAccept,
+  multipleCompletions = false,
   size = "sm",
   buttonStyles,
   acceptShortcut,
@@ -134,6 +138,8 @@ export const AcceptCompletionButton: React.FC<{
       runCell();
     }
   };
+
+  const text = multipleCompletions ? "Accept all" : "Accept";
 
   const baseClasses = `h-6 text-(--grass-11) bg-(--grass-3)/60
     hover:bg-(--grass-3) dark:bg-(--grass-4)/80 dark:hover:bg-(--grass-3) font-semibold
@@ -150,12 +156,18 @@ export const AcceptCompletionButton: React.FC<{
           onClick={onAccept}
           className={`${baseClasses} rounded-r-none ${buttonStyles}`}
         >
-          Accept
+          {text}
           {acceptShortcut && (
             <MinimalHotkeys className="ml-1 inline" shortcut={acceptShortcut} />
           )}
         </Button>
-        <Tooltip content="Accept and run cell">
+        <Tooltip
+          content={
+            multipleCompletions
+              ? "Accept and run all cells"
+              : "Accept and run cell"
+          }
+        >
           <Button
             variant="text"
             size={size}
@@ -163,7 +175,7 @@ export const AcceptCompletionButton: React.FC<{
             onClick={handleAcceptAndRun}
             className={`${baseClasses} rounded-l-none px-1.5 ${playButtonStyles}`}
           >
-            <PlayIcon className="h-2.5 w-2.5 mt-0.5" />
+            <PlayIcon className="h-2.5 w-2.5" />
           </Button>
         </Tooltip>
       </div>
@@ -178,7 +190,7 @@ export const AcceptCompletionButton: React.FC<{
       onClick={onAccept}
       className={`${baseClasses} rounded px-3 ${buttonStyles}`}
     >
-      Accept
+      {text}
       {acceptShortcut && (
         <MinimalHotkeys className="ml-1 inline" shortcut={acceptShortcut} />
       )}
@@ -188,10 +200,17 @@ export const AcceptCompletionButton: React.FC<{
 
 export const RejectCompletionButton: React.FC<{
   onDecline: () => void;
+  multipleCompletions?: boolean;
   size?: "xs" | "sm";
   className?: string;
   declineShortcut?: string;
-}> = ({ onDecline, size = "sm", className, declineShortcut }) => {
+}> = ({
+  onDecline,
+  multipleCompletions = false,
+  size = "sm",
+  className,
+  declineShortcut,
+}) => {
   return (
     <Button
       variant="text"
@@ -202,7 +221,7 @@ export const RejectCompletionButton: React.FC<{
     active:bg-(--red-5) dark:active:bg-(--red-4)
     border-(--red-6) border hover:shadow-xs ${className}`}
     >
-      Reject
+      Reject{multipleCompletions && " all"}
       {declineShortcut && (
         <MinimalHotkeys className="ml-1 inline" shortcut={declineShortcut} />
       )}

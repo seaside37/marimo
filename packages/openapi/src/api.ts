@@ -2836,6 +2836,7 @@ export interface components {
      *         - `ollama`: the Ollama config
      *         - `github`: the GitHub config
      *         - `openrouter`: the OpenRouter config
+     *         - `wandb`: the Weights & Biases config
      *         - `open_ai_compatible`: the OpenAI-compatible config
      */
     AiConfig: {
@@ -2847,13 +2848,14 @@ export interface components {
       inline_tooltip?: boolean;
       max_tokens?: number;
       /** @enum {unknown} */
-      mode?: "ask" | "manual";
+      mode?: "agent" | "ask" | "manual";
       models?: components["schemas"]["AiModelConfig"];
       ollama?: components["schemas"]["OpenAiConfig"];
       open_ai?: components["schemas"]["OpenAiConfig"];
       open_ai_compatible?: components["schemas"]["OpenAiConfig"];
       openrouter?: components["schemas"]["OpenAiConfig"];
       rules?: string;
+      wandb?: components["schemas"]["OpenAiConfig"];
     };
     /** AiInlineCompletionRequest */
     AiInlineCompletionRequest: {
@@ -3231,8 +3233,7 @@ export interface components {
       chart_code?: string | null;
       /** @default null */
       chart_spec?: string | null;
-      /** @default  */
-      column_name?: string;
+      column_name: string;
       /** @default null */
       error?: string | null;
       /** @default null */
@@ -3241,8 +3242,7 @@ export interface components {
       op: "data-column-preview";
       /** @default null */
       stats?: null | components["schemas"]["ColumnStats"];
-      /** @default  */
-      table_name?: string;
+      table_name: string;
     };
     /**
      * DataSourceConnection
@@ -4088,6 +4088,7 @@ export interface components {
      *
      *         - `api_key`: the OpenAI API key
      *         - `base_url`: the base URL for the API
+     *         - `project`: the project ID for the OpenAI API
      *         - `ssl_verify` : Boolean argument for httpx passed to open ai client. httpx defaults to true, but some use cases to let users override to False in some testing scenarios
      *         - `ca_bundle_path`: custom ca bundle to be used for verifying SSL certificates. Used to create custom SSL context for httpx client
      *         - `client_pem` : custom path of a client .pem cert used for verifying identity of client server
@@ -4102,6 +4103,7 @@ export interface components {
         [key: string]: string;
       };
       model?: string;
+      project?: string;
       ssl_verify?: boolean;
     };
     /** OpenTutorialRequest */
@@ -4614,7 +4616,7 @@ export interface components {
      */
     ToolDefinition: {
       description: string;
-      mode: ("ask" | "manual")[];
+      mode: ("agent" | "ask" | "manual")[];
       name: string;
       parameters: Record<string, any>;
       /** @enum {unknown} */

@@ -17,6 +17,7 @@ import {
   LanguageServerClient,
   languageServerWithClient,
 } from "@marimo-team/codemirror-languageserver";
+import { PythonParser } from "@marimo-team/smart-cells";
 import type { CellId } from "@/core/cells/ids";
 import { hasCapability } from "@/core/config/capabilities";
 import type {
@@ -43,8 +44,15 @@ import {
 import type { LanguageAdapter } from "../types";
 
 const pylspClient = once((lspConfig: LSPConfig) => {
+  // Create a mutable reference for the resync callback
+  let resyncCallback: (() => Promise<void>) | undefined;
+
+  const transport = createTransport("pylsp", async () => {
+    await resyncCallback?.();
+  });
+
   const lspClientOpts = {
-    transport: createTransport("pylsp"),
+    transport,
     rootUri: getLSPDocumentRootUri(),
     workspaceFolders: [],
   };
@@ -125,67 +133,98 @@ const pylspClient = once((lspConfig: LSPConfig) => {
 
   // We wrap the client in a NotebookLanguageServerClient to add some
   // additional functionality to handle multiple cells
-  return new NotebookLanguageServerClient(
+  const notebookClient = new NotebookLanguageServerClient(
     new LanguageServerClient({
       ...lspClientOpts,
     }),
     settings,
   );
+
+  // Set the resync callback now that the client exists
+  resyncCallback = () => notebookClient.resyncAllDocuments();
+
+  return notebookClient;
 });
 
 const tyLspClient = once((_: LSPConfig) => {
+  let resyncCallback: (() => Promise<void>) | undefined;
+
+  const transport = createTransport("ty", async () => {
+    await resyncCallback?.();
+  });
+
   const lspClientOpts = {
-    transport: createTransport("ty"),
+    transport,
     rootUri: getLSPDocumentRootUri(),
     workspaceFolders: [],
   };
 
   // We wrap the client in a NotebookLanguageServerClient to add some
   // additional functionality to handle multiple cells
-  return new NotebookLanguageServerClient(
+  const notebookClient = new NotebookLanguageServerClient(
     new LanguageServerClient({
       ...lspClientOpts,
       getWorkspaceConfiguration: (_) => [{ disableLanguageServices: true }],
     }),
     {},
   );
+
+  // Set the resync callback now that the client exists
+  resyncCallback = () => notebookClient.resyncAllDocuments();
+
+  return notebookClient;
 });
 
 const pyrightClient = once((_: LSPConfig) => {
+  let resyncCallback: (() => Promise<void>) | undefined;
+
+  const transport = createTransport("basedpyright", async () => {
+    await resyncCallback?.();
+  });
+
   const lspClientOpts = {
-    transport: createTransport("basedpyright"),
+    transport,
     rootUri: getLSPDocumentRootUri(),
     workspaceFolders: [],
   };
 
   // We wrap the client in a NotebookLanguageServerClient to add some
   // additional functionality to handle multiple cells
-  return new NotebookLanguageServerClient(
+  const notebookClient = new NotebookLanguageServerClient(
     new LanguageServerClient({
       ...lspClientOpts,
     }),
     {},
   );
+
+  // Set the resync callback now that the client exists
+  resyncCallback = () => notebookClient.resyncAllDocuments();
+
+  return notebookClient;
 });
 
 /**
  * Language adapter for Python.
  */
 export class PythonLanguageAdapter implements LanguageAdapter<{}> {
+  private parser = new PythonParser();
+
   readonly type = "python";
-  readonly defaultCode = "";
-  readonly defaultMetadata = {};
+  readonly defaultCode = this.parser.defaultCode;
+  readonly defaultMetadata = this.parser.defaultMetadata;
 
   transformIn(code: string): [string, number, {}] {
-    return [code, 0, {}];
+    const result = this.parser.transformIn(code);
+    return [result.code, result.offset, result.metadata];
   }
 
-  transformOut(code: string, _metadata: {}): [string, number] {
-    return [code, 0];
+  transformOut(code: string, metadata: {}): [string, number] {
+    const result = this.parser.transformOut(code, metadata);
+    return [result.code, result.offset];
   }
 
-  isSupported(_code: string): boolean {
-    return true;
+  isSupported(code: string): boolean {
+    return this.parser.isSupported(code);
   }
 
   getExtension(

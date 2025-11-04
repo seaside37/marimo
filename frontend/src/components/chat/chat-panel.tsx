@@ -5,7 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import { storePrompt } from "@marimo-team/codemirror-ai";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { DefaultChatTransport, type ToolUIPart } from "ai";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import {
   AtSignIcon,
   BotMessageSquareIcon,
@@ -30,13 +30,19 @@ import {
 import { replaceMessagesInChat } from "@/core/ai/chat-utils";
 import { useModelChange } from "@/core/ai/config";
 import { AiModelId, type ProviderId } from "@/core/ai/ids/ids";
+import { useStagedAICellsActions } from "@/core/ai/staged-cells";
 import {
   activeChatAtom,
   type Chat,
   type ChatId,
   chatStateAtom,
 } from "@/core/ai/state";
-import { FRONTEND_TOOL_REGISTRY } from "@/core/ai/tools/registry";
+import type { ToolNotebookContext } from "@/core/ai/tools/base";
+import {
+  type CopilotMode,
+  FRONTEND_TOOL_REGISTRY,
+} from "@/core/ai/tools/registry";
+import { useCellActions } from "@/core/cells/cells";
 import { aiAtom, aiEnabledAtom } from "@/core/config/config";
 import { DEFAULT_AI_MODEL } from "@/core/config/config-schema";
 import { FeatureFlagged } from "@/core/config/feature-flag";
@@ -45,7 +51,6 @@ import { useRuntimeManager } from "@/core/runtime/config";
 import { ErrorBanner } from "@/plugins/impl/common/error-banner";
 import { cn } from "@/utils/cn";
 import { Logger } from "@/utils/Logger";
-
 import { AIModelDropdown } from "../ai/ai-model-dropdown";
 import { useOpenSettingsToTab } from "../app-config/state";
 import { PromptInput } from "../editor/ai/add-cell-with-ai";
@@ -301,7 +306,11 @@ const ChatInputFooter: React.FC<ChatInputFooterProps> = memo(
 
     const { saveModeChange } = useModelChange();
 
-    const modeOptions = [
+    const modeOptions: {
+      value: CopilotMode;
+      label: string;
+      subtitle: string;
+    }[] = [
       {
         value: "ask",
         label: "Ask",
@@ -312,6 +321,11 @@ const ChatInputFooter: React.FC<ChatInputFooterProps> = memo(
         value: "manual",
         label: "Manual",
         subtitle: "Pure chat, no tool usage",
+      },
+      {
+        value: "agent",
+        label: "Agent (beta)",
+        subtitle: "Use AI with access to read and write tools",
       },
     ];
 
@@ -358,7 +372,12 @@ const ChatInputFooter: React.FC<ChatInputFooterProps> = memo(
           </div>
           <div className="flex flex-row">
             <Tooltip content="Add context">
-              <Button variant="text" size="icon" onClick={onAddContext}>
+              <Button
+                variant="text"
+                size="icon"
+                onClick={onAddContext}
+                disabled={isLoading}
+              >
                 <AtSignIcon className="h-3.5 w-3.5" />
               </Button>
             </Tooltip>
@@ -371,6 +390,7 @@ const ChatInputFooter: React.FC<ChatInputFooterProps> = memo(
                     className="cursor-pointer"
                     onClick={() => fileInputRef.current?.click()}
                     title="Attach a file"
+                    disabled={isLoading}
                   >
                     <PaperclipIcon className="h-3.5 w-3.5" />
                   </Button>
@@ -511,9 +531,20 @@ const ChatPanelBody = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const runtimeManager = useRuntimeManager();
-  const { invokeAiTool } = useRequestClient();
+  const { invokeAiTool, sendRun } = useRequestClient();
 
   const activeChatId = activeChat?.id;
+  const store = useStore();
+
+  const { addStagedCell } = useStagedAICellsActions();
+  const { createNewCell, prepareForRun } = useCellActions();
+  const toolContext: ToolNotebookContext = {
+    addStagedCell,
+    createNewCell,
+    prepareForRun,
+    sendRun,
+    store,
+  };
 
   const {
     messages,
@@ -555,6 +586,13 @@ const ChatPanelBody = () => {
       });
     },
     onToolCall: async ({ toolCall }) => {
+      // Dynamic tool calls will throw an error for toolName
+      // https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-tool-usage#client-side-page
+      if (toolCall.dynamic) {
+        Logger.debug("Skipping dynamic tool call", toolCall);
+        return;
+      }
+
       await handleToolCall({
         invokeAiTool,
         addToolResult,
@@ -563,6 +601,7 @@ const ChatPanelBody = () => {
           toolCallId: toolCall.toolCallId,
           input: toolCall.input as Record<string, never>,
         },
+        toolContext,
       });
     },
     onError: (error) => {

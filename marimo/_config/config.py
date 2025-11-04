@@ -231,7 +231,7 @@ class PackageManagementConfig(TypedDict):
     manager: Literal["pip", "rye", "uv", "poetry", "pixi"]
 
 
-CopilotMode = Literal["ask", "manual"]
+CopilotMode = Literal["ask", "manual", "agent"]
 
 
 @mddoc
@@ -275,6 +275,7 @@ class AiConfig(TypedDict, total=False):
     - `ollama`: the Ollama config
     - `github`: the GitHub config
     - `openrouter`: the OpenRouter config
+    - `wandb`: the Weights & Biases config
     - `open_ai_compatible`: the OpenAI-compatible config
     """
 
@@ -293,6 +294,7 @@ class AiConfig(TypedDict, total=False):
     ollama: OpenAiConfig
     github: GitHubConfig
     openrouter: OpenAiConfig
+    wandb: OpenAiConfig
     open_ai_compatible: OpenAiConfig
 
 
@@ -304,6 +306,7 @@ class OpenAiConfig(TypedDict, total=False):
 
     - `api_key`: the OpenAI API key
     - `base_url`: the base URL for the API
+    - `project`: the project ID for the OpenAI API
     - `ssl_verify` : Boolean argument for httpx passed to open ai client. httpx defaults to true, but some use cases to let users override to False in some testing scenarios
     - `ca_bundle_path`: custom ca bundle to be used for verifying SSL certificates. Used to create custom SSL context for httpx client
     - `client_pem` : custom path of a client .pem cert used for verifying identity of client server
@@ -312,6 +315,7 @@ class OpenAiConfig(TypedDict, total=False):
 
     api_key: str
     base_url: NotRequired[str]
+    project: NotRequired[str]
     ssl_verify: NotRequired[bool]
     ca_bundle_path: NotRequired[str]
     client_pem: NotRequired[str]
@@ -629,7 +633,7 @@ DEFAULT_CONFIG: MarimoConfig = {
     "formatting": {"line_length": 79},
     "keymap": {"preset": "default", "overrides": {}},
     "runtime": {
-        "auto_instantiate": True,
+        "auto_instantiate": False,
         "auto_reload": "off",
         "reactive_tests": True,
         "on_cell_change": "autorun",
@@ -654,7 +658,7 @@ DEFAULT_CONFIG: MarimoConfig = {
     },
     "language_servers": {
         "pylsp": {
-            "enabled": True,
+            "enabled": False,
             "enable_mypy": True,
             "enable_ruff": True,
             "enable_flake8": False,

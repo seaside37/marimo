@@ -982,3 +982,16 @@ class TestPolarsTableManagerFactory(unittest.TestCase):
         )
 
         data.write_json()
+
+    def test_to_json_enum_list_supported(self) -> None:
+        import polars as pl
+
+        data = {"A": [["A", "B", "C"], ["A", "B", "C"], ["A", "B", "C"]]}
+
+        data_enum = pl.DataFrame(
+            data, schema={"A": pl.List(pl.Enum(categories=["A", "B", "C"]))}
+        )
+        data_enum.write_json()
+
+        data_list = pl.DataFrame(data, schema={"A": pl.List(pl.Categorical())})
+        data_list.write_json()

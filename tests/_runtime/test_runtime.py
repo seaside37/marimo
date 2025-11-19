@@ -537,6 +537,50 @@ class TestExecution:
         assert not k._uninstantiated_execution_requests
         assert k.globals["z"] == 3
 
+    async def test_instantiate_autorun_false_empty_cells_not_stale(
+        self, any_kernel: Kernel
+    ) -> None:
+        """Tests that empty cells are not marked as stale during instantiation."""
+        k = any_kernel
+        await k.instantiate(
+            CreationRequest(
+                execution_requests=(
+                    ExecutionRequest(cell_id="0", code="x=0"),
+                    ExecutionRequest(cell_id="1", code=""),
+                    ExecutionRequest(cell_id="2", code="  \n  "),
+                    ExecutionRequest(cell_id="3", code="y=x+1"),
+                ),
+                set_ui_element_value_request=SetUIElementValueRequest.from_ids_and_values(
+                    []
+                ),
+                auto_run=False,
+            )
+        )
+
+        # Check that all cells are in uninstantiated requests
+        assert len(k._uninstantiated_execution_requests) == 4
+
+        # Check the stream for stale broadcasts
+        stream = MockStream(k.stream)
+        cell_ops = [
+            op for op in stream.parsed_operations if isinstance(op, CellOp)
+        ]
+
+        # Filter for stale broadcasts
+        stale_broadcasts = [
+            op
+            for op in cell_ops
+            if op.stale_inputs is not None and op.stale_inputs
+        ]
+
+        # Only cells 0 and 3 should be marked as stale (non-empty cells)
+        stale_cell_ids = {op.cell_id for op in stale_broadcasts}
+        assert stale_cell_ids == {"0", "3"}
+
+        # Cells 1 and 2 (empty/whitespace) should not be marked as stale
+        assert "1" not in stale_cell_ids
+        assert "2" not in stale_cell_ids
+
     # Test errors in marimo semantics
     async def test_kernel_simultaneous_multiple_definition_error(
         self,
@@ -1583,7 +1627,7 @@ except NameError:
         assert m1["status"] == "queued"
         assert m2["status"] == "running"
         assert m3["status"] is None
-        assert m3["output"]["data"] == "<pre style='font-size: 12px'>1</pre>"
+        assert m3["output"]["data"] == "<pre class='text-xs'>1</pre>"
         assert m4["status"] == "idle"
         # Does not pollute globals
         assert "x" not in k.globals
@@ -1610,8 +1654,7 @@ except NameError:
         messages = stream.operations
         output_message = messages[-2]
         assert (
-            output_message["output"]["data"]
-            == "<pre style='font-size: 12px'>20</pre>"
+            output_message["output"]["data"] == "<pre class='text-xs'>20</pre>"
         )
         assert "z" in k.globals
         # Does not pollute globals
@@ -1639,8 +1682,7 @@ except NameError:
         messages = stream.operations
         output_message = messages[-2]
         assert (
-            output_message["output"]["data"]
-            == "<pre style='font-size: 12px'>20</pre>"
+            output_message["output"]["data"] == "<pre class='text-xs'>20</pre>"
         )
         assert "z" in k.globals
         # Does not pollute globals, reverts back to 10

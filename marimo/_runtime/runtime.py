@@ -3316,6 +3316,8 @@ def connect_duckdb(target_globals: dict | None = None):
     The timing of the call should be when the kernel is initialized and kernel.globals is available (e.g. within launch_kernel).
     """
     g = target_globals if target_globals is not None else globals()
+    S3_ARN = os.getenv('S3_ARN')
+
     try:
         import duckdb
         duckdb_engine = duckdb.connect()

@@ -3334,7 +3334,7 @@ def connect_duckdb(target_globals: dict | None = None):
         """)
 
         duckdb_engine.execute("""
-            ATTACH 'arn:aws:s3tables:us-east-1:721506677612:bucket/my-demo-s3-tables' AS s3_tables (
+            ATTACH '{S3_ARN}' AS s3_tables (
             TYPE iceberg,
             ENDPOINT_TYPE s3_tables
         );

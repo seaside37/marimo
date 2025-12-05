@@ -3319,17 +3319,15 @@ def connect_duckdb(target_globals: dict | None = None):
     tenant_namespace = os.getenv("S3_TENANT_NAMESPACE")
 
     try:
-        os.environ['DUCKDB_HOME'] = '/tmp/duckdb_cache'
+        # os.environ['DUCKDB_HOME'] = '/tmp/duckdb_cache'
         os.environ['HOME'] = '/tmp'
-        os.makedirs('/tmp/duckdb_cache', exist_ok=True)
-        print("🔹 Home ENV setted", file=sys.stderr, flush=True)
+        # os.makedirs('/tmp/duckdb_cache', exist_ok=True)
     except Exception as e:
         print(f"⚠️ Failed to create DuckDB cache directory: {e}", file=sys.stderr, flush=True)
 
     try:
         import duckdb
         duckdb_engine = duckdb.connect(database=":memory:")
-        print("🔹 DuckDB connection initialized")
 
         duckdb_engine.execute("INSTALL aws")
         duckdb_engine.execute("INSTALL httpfs")
@@ -3337,7 +3335,6 @@ def connect_duckdb(target_globals: dict | None = None):
         duckdb_engine.execute("LOAD aws;")
         duckdb_engine.execute("LOAD httpfs;")
         duckdb_engine.execute("LOAD iceberg;")
-        print("🔹 DuckDB extensions loaded: aws, httpfs, iceberg", file=sys.stderr, flush=True)
 
         duckdb_engine.execute("""
             CREATE SECRET (
@@ -3345,7 +3342,6 @@ def connect_duckdb(target_globals: dict | None = None):
             PROVIDER credential_chain
         );
         """)
-        print("🔹 DuckDB S3 secret created (using credential chain)", file=sys.stderr, flush=True)
 
         duckdb_engine.execute(f"""
             ATTACH '{S3_ARN}' AS s3_tables (
@@ -3353,7 +3349,6 @@ def connect_duckdb(target_globals: dict | None = None):
             ENDPOINT_TYPE s3_tables
         );
         """)
-        print("🔹 S3 tables attached as 's3_tables'", file=sys.stderr, flush=True)
 
         duckdb_engine.execute(f"""
             CREATE SCHEMA IF NOT EXISTS tenant_schema;

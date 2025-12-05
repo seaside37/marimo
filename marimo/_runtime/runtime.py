@@ -3325,7 +3325,7 @@ def connect_duckdb(target_globals: dict | None = None):
 
     try:
         import duckdb
-        duckdb_engine = duckdb.connect()
+        duckdb_engine = duckdb.connect(database=":memory:")
         print("🔹 DuckDB connection initialized")
 
         duckdb_engine.execute("INSTALL aws")

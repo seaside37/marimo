@@ -3322,10 +3322,9 @@ def connect_duckdb(target_globals: dict | None = None):
         os.environ['DUCKDB_HOME'] = '/tmp/duckdb_cache'
         os.environ['HOME'] = '/tmp'
         os.makedirs('/tmp/duckdb_cache', exist_ok=True)
+        print("🔹 Home ENV setted", file=sys.stderr, flush=True)
     except Exception as e:
         print(f"⚠️ Failed to create DuckDB cache directory: {e}", file=sys.stderr, flush=True)
-    
-    print("🔹 Home ENV setted", file=sys.stderr, flush=True)
 
     try:
         import duckdb

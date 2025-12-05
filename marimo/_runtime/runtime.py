@@ -3319,6 +3319,15 @@ def connect_duckdb(target_globals: dict | None = None):
     tenant_namespace = os.getenv("S3_TENANT_NAMESPACE")
 
     try:
+        os.environ['DUCKDB_HOME'] = '/tmp/duckdb_cache'
+        os.environ['HOME'] = '/tmp'
+        os.makedirs('/tmp/duckdb_cache', exist_ok=True)
+    except Exception as e:
+        print(f"⚠️ Failed to create DuckDB cache directory: {e}", file=sys.stderr, flush=True)
+    
+    print("🔹 Home ENV setted", file=sys.stderr, flush=True)
+
+    try:
         import duckdb
         duckdb_engine = duckdb.connect(database=":memory:")
         print("🔹 DuckDB connection initialized")
@@ -3370,7 +3379,7 @@ def connect_duckdb(target_globals: dict | None = None):
         g["duckdb_engine"] = duckdb_engine
 
     except Exception as e:
-        print(f"        ⚠️ Failed to connect to DuckDB: {e}", file=sys.stderr, flush=True)
+        print(f"⚠️ Failed to connect to DuckDB: {e}", file=sys.stderr, flush=True)
 
 # def _make_datatable_from_df(name: str, df) -> DataTable:
 #     """Convert a pandas DataFrame into a DataTable object."""

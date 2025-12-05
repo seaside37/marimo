@@ -3318,11 +3318,6 @@ def connect_duckdb(target_globals: dict | None = None):
     S3_ARN = os.getenv("S3_ARN")
     tenant_namespace = os.getenv("S3_TENANT_NAMESPACE")
 
-    aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
-    aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
-    aws_region = os.environ.get('AWS_REGION')
-    print(f"AWS_SECRET_ACCESS_KEY={aws_secret_access_key}, AWS_ACCESS_KEY_ID={aws_access_key_id}, AWS_REGION={aws_region}, S3_ARN={S3_ARN}, tenant_namespace={tenant_namespace}", file=sys.stderr, flush=True)
-
     try:
         import duckdb
         duckdb_engine = duckdb.connect(database=":memory:")

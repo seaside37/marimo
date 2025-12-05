@@ -3178,7 +3178,6 @@ def launch_kernel(
     )
 
     try:
-        # connect_tsdb(target_globals=kernel.globals)
         connect_duckdb(target_globals=kernel.globals)
     except Exception as e:
         LOGGER.debug("connect_tsdb failed: %s", e)
@@ -3186,7 +3185,6 @@ def launch_kernel(
     try:
         publish_local_engine(kernel).broadcast()
         # kernel.enqueue_control_request(PreviewDataSourceConnectionRequest(engine="engine"))
-
     except Exception as e:
          LOGGER.debug("publish_local_dataframes failed: %s", e)
 
@@ -3280,50 +3278,25 @@ def launch_kernel(
 
 
 # load tables from Postgres tsdb into globals
-import pandas as pd
-from sqlalchemy import create_engine, inspect
-import os, warnings
-# warnings.filterwarnings("ignore")
-
-# def connect_tsdb(target_globals: dict | None = None) -> None:
-#     """
-#     Load the table from Postgres and inject it into target_globals (or module globals if not provided).
-#     The timing of the call should be when the kernel is initialized and kernel.globals is available (e.g. within launch_kernel).
-#     """
-#     g = target_globals if target_globals is not None else globals()
-#     try:
-#         PG_URL = os.getenv("PG_URL", "postgresql+psycopg2://postgres:123456@localhost:5432/tsdb")
-#         pg_engine = create_engine(PG_URL)
-#         g["pg_engine"] = pg_engine
-#         inspector = inspect(pg_engine)
-#         tables = inspector.get_table_names()
-
-#         for table in tables:
-#             try:
-#                 df = pd.read_sql(f"SELECT * FROM {table}", pg_engine)
-#                 g[table] = df
-#             except Exception as e:
-#                 print(f"        ⚠️ Failed to load table '{table}': {e}")
-
-#         print(f"        ✅ Loaded {len(tables)} tables from PostgreSQL")
-#     except Exception as e:
-#         print(f"        ⚠️ Failed to connect to PostgreSQL: {e}")
-
 def connect_duckdb(target_globals: dict | None = None):
     """
     Load the table from DuckDB and inject it into target_globals (or module globals if not provided).
     The timing of the call should be when the kernel is initialized and kernel.globals is available (e.g. within launch_kernel).
     """
     g = target_globals if target_globals is not None else globals()
+
+    if "duckdb_engine" in g:
+        try:
+            import duckdb
+            if isinstance(g["duckdb_engine"], duckdb.DuckDBPyConnection):
+                return g["duckdb_engine"]
+        except:
+            pass
+    
     S3_ARN = os.getenv("S3_ARN")
     tenant_namespace = os.getenv("S3_TENANT_NAMESPACE")
 
-    try:
-        # os.environ['DUCKDB_HOME'] = '/tmp/duckdb_cache'
-        os.environ['HOME'] = '/tmp'
-        # os.makedirs('/tmp/duckdb_cache', exist_ok=True)
-    except Exception as e:
-        print(f"⚠️ Failed to create DuckDB cache directory: {e}", file=sys.stderr, flush=True)
+    os.environ['HOME'] = '/tmp'
 
     try:
         import duckdb
@@ -3349,109 +3322,12 @@ def connect_duckdb(target_globals: dict | None = None):
             ENDPOINT_TYPE s3_tables
         );
         """)
-        # duckdb_engine.execute(f"""
-        #     CREATE SCHEMA IF NOT EXISTS tenant_schema;
-        # """)
-
-        # tables = duckdb_engine.execute(f"""
-        #     SELECT table_name 
-        #     FROM information_schema.tables 
-        #     WHERE table_catalog = 's3_tables' 
-        #     AND table_schema = '{tenant_namespace}'
-        #     ORDER BY table_name;
-        # """).fetchall()
-
-        # for table_name, in tables:
-        #     duckdb_engine.execute(f"""
-        #     CREATE OR REPLACE VIEW tenant_schema.{table_name} AS
-        #     SELECT * FROM s3_tables.{tenant_namespace}.{table_name};
-        # """)
-            
-        # duckdb_engine.execute("DETACH s3_tables;")
 
         g["duckdb_engine"] = duckdb_engine
 
     except Exception as e:
         print(f"⚠️ Failed to connect to DuckDB: {e}", file=sys.stderr, flush=True)
 
-# def _make_datatable_from_df(name: str, df) -> DataTable:
-#     """Convert a pandas DataFrame into a DataTable object."""
-#     import pandas as pd
-
-#     def infer_type(dtype):
-#         """Infer marimo-style data type from pandas dtype."""
-#         if pd.api.types.is_bool_dtype(dtype):
-#             return "boolean"
-#         elif pd.api.types.is_integer_dtype(dtype):
-#             return "integer"
-#         elif pd.api.types.is_float_dtype(dtype):
-#             return "number"
-#         elif pd.api.types.is_datetime64_any_dtype(dtype):
-#             return "datetime"
-#         elif pd.api.types.is_timedelta64_dtype(dtype):
-#             return "time"
-#         elif pd.api.types.is_string_dtype(dtype) or pd.api.types.is_object_dtype(dtype):
-#             return "string"
-#         else:
-#             return "unknown"
-
-#     # Build DataTableColumn objects
-#     columns = []
-#     for col in df.columns:
-#         try:
-#             dtype = df[col].dtype
-#             inferred_type = infer_type(dtype)
-#             sample_values = df[col].dropna().head(5).tolist()
-#             columns.append(
-#                 DataTableColumn(
-#                     name=str(col),
-#                     type=inferred_type,
-#                     external_type=str(dtype),
-#                     sample_values=sample_values,
-#                 )
-#             )
-#         except Exception as e:
-#             print(f"⚠️ Error processing column {col}: {e}")
-#             continue
-
-#     # Construct DataTable
-#     # NOTE: do NOT set variable_name here so SessionView won't drop it
-#     datatable = DataTable(
-#         source_type="local",
-#         source="pandas",
-#         name=name,
-#         num_rows=len(df),
-#         num_columns=len(df.columns),
-#         variable_name=None,   # explicit: not tied to a kernel variable name
-#         columns=columns,
-#         type="table",
-#     )
-#     return datatable
-
-
-# def publish_local_dataframes(kernel) -> Datasets:
-#     """Scan kernel.globals, find pandas.DataFrame and produce a Datasets op to broadcast."""
-
-#     import pandas as pd
-
-#     dataframes: dict[str, Any] = {}
-#     for name, val in list(getattr(kernel, "globals", {}).items()):
-#         try:
-#             if isinstance(val, pd.DataFrame):
-#                 dataframes[name] = val
-#         except Exception as e:
-#             print(f"❌ Error detecting DataFrame for {name}: {e}")
-#             continue
-
-#     if not dataframes:
-#         # return an empty Datasets op (caller may choose not to broadcast)
-#         return Datasets(tables=[])
-
-#     # Build DataTable objects (no variable_name so they are treated as "local" tables)
-#     tables = [_make_datatable_from_df(name, df) for name, df in dataframes.items()]
-
-#     # Create a Datasets op which SessionView retains/merges persistently
-#     return Datasets(tables=tables)
 
 def publish_local_engine(kernel) -> DataSourceConnections:
     """Scan kernel.globals, find SQLConnectionType and produce a DataSourceConnections op to broadcast."""

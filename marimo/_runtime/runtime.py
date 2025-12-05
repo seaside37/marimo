@@ -3349,26 +3349,25 @@ def connect_duckdb(target_globals: dict | None = None):
             ENDPOINT_TYPE s3_tables
         );
         """)
+        # duckdb_engine.execute(f"""
+        #     CREATE SCHEMA IF NOT EXISTS tenant_schema;
+        # """)
 
-        duckdb_engine.execute(f"""
-            CREATE SCHEMA IF NOT EXISTS tenant_schema;
-        """)
+        # tables = duckdb_engine.execute(f"""
+        #     SELECT table_name 
+        #     FROM information_schema.tables 
+        #     WHERE table_catalog = 's3_tables' 
+        #     AND table_schema = '{tenant_namespace}'
+        #     ORDER BY table_name;
+        # """).fetchall()
 
-        tables = duckdb_engine.execute(f"""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_catalog = 's3_tables' 
-            AND table_schema = '{tenant_namespace}'
-            ORDER BY table_name;
-        """).fetchall()
-
-        for table_name, in tables:
-            duckdb_engine.execute(f"""
-            CREATE OR REPLACE VIEW tenant_schema.{table_name} AS
-            SELECT * FROM s3_tables.{tenant_namespace}.{table_name};
-        """)
+        # for table_name, in tables:
+        #     duckdb_engine.execute(f"""
+        #     CREATE OR REPLACE VIEW tenant_schema.{table_name} AS
+        #     SELECT * FROM s3_tables.{tenant_namespace}.{table_name};
+        # """)
             
-        duckdb_engine.execute("DETACH s3_tables;")
+        # duckdb_engine.execute("DETACH s3_tables;")
 
         g["duckdb_engine"] = duckdb_engine
 
